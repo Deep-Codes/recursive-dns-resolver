@@ -63,11 +63,12 @@ def resolve(records, chain, dom)
       chain.push(temp_domain.strip)
       # RECURSIVE CALL (NEW DOMAIN)
       resolve(records, chain, temp_domain)
-    else records[:RECORDTYPE][index_of_domain] == "A"
-      
- #
-      chain.push(records[:DESTINATION][index_of_domain].strip)     end
-    return chain
+    elsif records[:RECORDTYPE][index_of_domain] == "A"
+      chain.push(records[:DESTINATION][index_of_domain].strip)
+    else
+      chain.push("Error: Invalid Column Found #{dom}")
+      return chain
+    end
   end
 end
 

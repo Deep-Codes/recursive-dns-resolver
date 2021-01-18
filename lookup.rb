@@ -23,52 +23,32 @@ dns_raw = File.readlines("zone")
 # PARSE_DNS FUNCTION
 def parse_dns(raw)
   # Filtering Lines with Comments and Empty Lines
-  dns_filter = raw.select { |x| x[0] != "#" && x != "\n" }
-
-  # Creating a List with 3 Columns
-  dns_filter_list = []
-  dns_filter.each { |x| dns_filter_list.push(x.split(", ")) }
-
-  # Creating the List each DNS for Hash
-  record_type_list = []
-  source_list = []
-  destination_list = []
-
-  dns_filter_list.each do |x|
-    record_type_list.push(x[0])
-    source_list.push(x[1])
-    destination_list.push(x[2])
-  end
+  dns_filter = raw.select { |x| x[0] != "#" && x != "\n" }.map {|x| x.split(", ")}
 
   # Building the Hash
-  dns_hash = {
-    "RECORDTYPE".to_sym => record_type_list,
-    "SOURCE".to_sym => source_list,
-    "DESTINATION".to_sym => destination_list,
-  }
-  return dns_hash
+   dns_hash = {}
+   dns_filter.each do |x| 
+     dns_hash[x[1]] = {
+       :type => x[0],
+       :target => x[2]
+     }
+   end
+ 
+   dns_hash
 end
 
 def resolve(records, chain, dom)
-  # Get the Index of Domain
-  index_of_domain = records[:SOURCE].index(dom)
-
-  # Unknown Alias and Domains
-  if index_of_domain == nil
-    return chain.push("Error: record not found for #{dom}")
+  record = records[dom]
+  if (!record)
+    chain.push("Error: Record not found for "+dom)
+  elsif record[:type] == "CNAME"
+    temp_domain = record[:target].strip
+    chain.push(temp_domain)
+    resolve(records , chain , temp_domain)
+  elsif record[:type] == "A"
+    chain.push(record[:target].strip)
   else
-    if records[:RECORDTYPE][index_of_domain] == "CNAME"
-      # Push the Domain
-      temp_domain = records[:DESTINATION][index_of_domain].strip
-      chain.push(temp_domain.strip)
-      # RECURSIVE CALL (NEW DOMAIN)
-      resolve(records, chain, temp_domain)
-    elsif records[:RECORDTYPE][index_of_domain] == "A"
-      chain.push(records[:DESTINATION][index_of_domain].strip)
-    else
-      chain.push("Error: Invalid Column Found #{dom}")
-      return chain
-    end
+    chain.push("Invalid record type for "+dom)
   end
 end
 

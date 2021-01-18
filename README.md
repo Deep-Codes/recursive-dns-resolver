@@ -1,17 +1,58 @@
-Program Flow:
+### Submission 2:
 
-1. Filters Empty and Lines with Comments
-2. Splits each line and creates a list
-3. Creating `dns_hash` with key being `RECORD TYPE`, `SOURCE`, `DESTINATION` and respective values being Arrays of them
+Based on the Suggestions Given:
 
-4. `resolve` function
+1. more functional by using `map` and `each` for putting the data into the record
 
-- Looks for the index of the SOURCE
-- handles Unknown Alias and Domains
-- checks `RECORD TYPE` with the help of Index
+```rb
+dns_filter = raw.select { |x| x[0] != "#" && x != "\n" }.map {|x| x.split(", ")}
 
-1. if the type is `CNAME` gets `DESTINATION` pushes it and calls the recursive function with the new domain(destination)
+   dns_hash = {}
+   dns_filter.each do |x|
+     dns_hash[x[1]] = {
+       :type => x[0],
+       :target => x[2]
+     }
+   end
+```
 
-2. elsif the type comes out to be `A` this means it has found its ipv4 address so it pushes the domain.
+2. Use a nested hash instead of a positional array for parsing DNS.
 
-3. returns the `lookup_chain`
+Previously `dns_hash` had a structure like this
+
+```rb
+dns_hash = {
+    "RECORDTYPE".to_sym => record_type_list,
+    "SOURCE".to_sym => source_list,
+    "DESTINATION".to_sym => destination_list,
+}
+```
+
+Now it's a hash where the key is the domain, and the value is another hash with :type and :target.
+
+```rb
+{
+  "gmail.com" => {:type => "CNAME", :target => "mail.google.com"},
+  "google.com" => {:type => "A", :target => "11.11.111"},
+  ...
+}
+```
+
+The `resolve` method changes to this form:
+
+```rb
+def resolve(records, chain, dom)
+  record = records[dom]
+  if (!record)
+    chain.push("Error: Record not found for "+dom)
+  elsif record[:type] == "CNAME"
+    temp_domain = record[:target].strip
+    chain.push(temp_domain)
+    resolve(records , chain , temp_domain)
+  elsif record[:type] == "A"
+    chain.push(record[:target].strip)
+  else
+    chain.push("Invalid record type for "+dom)
+  end
+end
+```
